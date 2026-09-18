@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "random-claude-skills",
   "version": "0.1.0",
   "description": "Three skills for working with Claude Code: context-budgeted subagent delegation, driving your own Chrome, and running a task to completion without check-in pauses.",
@@ -9,5 +10,12 @@
   "homepage": "https://github.com/embenzekri/random-claude-skills",
   "repository": "https://github.com/embenzekri/random-claude-skills",
   "license": "MIT",
-  "keywords": ["subagents", "orchestration", "browser", "automation", "autonomy", "skills"]
+  "keywords": [
+    "subagents",
+    "orchestration",
+    "browser",
+    "automation",
+    "autonomy",
+    "skills"
+  ]
 }

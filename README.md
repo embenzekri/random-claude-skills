@@ -16,7 +16,7 @@ As a plugin (gets all three):
 
 ```
 /plugin marketplace add embenzekri/random-claude-skills
-/plugin install random-claude-skills
+/plugin install random-claude-skills@embenzekri
 ```
 
 Or copy just the ones you want:
@@ -35,15 +35,21 @@ with `/fanout`, `/my-chrome`, `/autopilot`.
 ### `fanout`
 
 The useful part is a **report contract** you paste verbatim into every subagent
-prompt. It caps the reply at 15 lines in a fixed `VERDICT / EVIDENCE / DETAIL /
-GAPS` shape, and forbids pasting file contents, diffs or logs into the reply —
-bulk output goes to a scratch file that the report cites by path.
+prompt. It fixes the reply to a `VERDICT / EVIDENCE / DETAIL / GAPS /
+CONFIDENCE` shape under a line budget, and forbids pasting file contents, diffs
+or logs into the reply — bulk output goes to a scratch file the report cites by
+path.
 
-That inversion is the whole point. A subagent that returns raw file dumps costs
-more context than doing the work inline; delegation only pays when the agent
-*collapses* a lot of reading into a little conclusion. The skill also carries a
-delegate/don't-delegate test, agent-type and model routing (cheap models for
-mechanical fan-out), and a concurrency ceiling with parallel batching.
+That inversion is the point. A subagent returning raw file dumps costs more
+context than doing the work inline; delegation only pays when the agent
+*collapses* a lot of reading into a little conclusion. The budget is tiered —
+15 lines to locate something, 40 to audit, 80 for research — because a cap too
+tight for the job just forces the parent to open the detail file anyway.
+
+Around that: an explicit anti-delegation case (multi-agent runs cost roughly 15x
+a chat interaction, and interdependent code edits are the canonical bad fit —
+fan out reads, serialize writes), a partition contract so agents don't duplicate
+each other, cost levers in order, and a failure-mode table.
 
 ### `my-chrome`
 
@@ -66,23 +72,34 @@ front-loads risky assumptions, allows three fix attempts with *different*
 hypotheses before routing around a blocker, and requires observing verification
 rather than asserting it.
 
+Its largest section exists to stop one specific failure. "Don't stop until it's
+done" is pressure to reach a green check, and the cheapest way to reach a green
+check is to move it — deleting a failing test, changing an expected value to
+whatever the code now produces, stubbing the thing under test, quietly narrowing
+the done-list. So verification is treated as immutable: a wrong test is a
+*finding, not a licence*, and "7 of 9 conditions met, here's why" counts as a
+success. A green report over a hollowed-out check is the one outcome worse than
+stopping to ask, because the log still looks clean.
+
 It grants autonomy over **scope and judgment, not safety**. Pushes, PRs, sends,
-spending, production, and deleting anything uninspected still park for your
-go-ahead — it keeps working on everything else and lists the pending gates at
-the end. Without that floor, "push to the maximum" eventually means an
-unrequested force-push.
+spending, production, destructive local git, and forced schema pushes still park
+for your go-ahead — local commits are *encouraged*, since a cheap undo is what
+makes autonomy safe in the first place.
 
 ## Caveats
 
 Personal skills, shared as-is. They may lag behind changes to Claude Code.
 
-`fanout` and `autopilot` are prompting patterns and should age well. **`my-chrome`
-is the brittle one** — it names specific MCP tools from the Claude desktop app's
-Chrome extension, and those names can change. If it starts telling Claude to
-call a tool that no longer exists, that section is the first thing to check.
+`fanout` and `autopilot` are mostly prompting patterns and should age well,
+though `fanout` cites current Claude Code limits (20 concurrent subagents, spawn
+depth 3) that could change. **`my-chrome` is the brittle one** — it names
+specific MCP tools from the Claude desktop app's Chrome extension, and those
+names can change. If it starts telling Claude to call a tool that no longer
+exists, that section is the first thing to check.
 
-The 15-line cap in `fanout` is the one number worth tuning; raise it for
-research-heavy work.
+Figures attributed to Anthropic come from their published engineering and
+security writing; the skills cite it inline. Numbers I could only trace to
+secondary coverage were left out rather than dressed up.
 
 ## License
 
