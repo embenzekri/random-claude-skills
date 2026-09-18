@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "random-claude-skills",
+  "owner": {
+    "name": "El Mehdi Benzekri",
+    "url": "https://github.com/embenzekri"
+  },
+  "metadata": {
+    "description": "Marketplace hosting the random-claude-skills plugin."
+  },
+  "plugins": [
+    {
+      "name": "random-claude-skills",
+      "description": "Three skills for working with Claude Code: context-budgeted subagent delegation (fanout), driving your own logged-in Chrome (my-chrome), and running a task to completion without check-in pauses (autopilot).",
+      "version": "0.1.0",
+      "author": {
+        "name": "El Mehdi Benzekri",
+        "url": "https://github.com/embenzekri"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/embenzekri/random-claude-skills"
+    }
+  ]
+}
