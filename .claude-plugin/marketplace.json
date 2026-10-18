@@ -14,6 +14,12 @@
       "description": "Three skills for working with Claude Code: context-budgeted subagent delegation (fanout), driving your own logged-in Chrome (my-chrome), and running a task to completion without check-in pauses (autopilot).",
       "source": "./",
       "category": "productivity"
+    },
+    {
+      "name": "agent-team",
+      "description": "Run an agentic engineering team: team-lead routing by cost of being wrong, agent-ready task packets, verify-against-reality before done, and guard hooks (no git add -A, no gh pr merge, no force-push, worktree-confined writes, DoD stop gate).",
+      "source": "./plugins/agent-team",
+      "category": "development"
     }
   ]
 }
