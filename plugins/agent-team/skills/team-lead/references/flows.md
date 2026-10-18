@@ -90,6 +90,12 @@ verify -> independent review -> integrator merges one -> integration gates on ma
    unless a ticket says otherwise.
 4. Never mix refactor with feature in one PR.
 
+## Obsolete ticket (pilot-style)
+
+When the planner returns `obsolete: done in <sha>`: verify the sha yourself, move the backlog
+ticket to done with the repo's own tool (e.g. `git mv` within `.backlog`), commit on a branch,
+and ask the owner before pushing (owner approval needed).
+
 ## Closing every flow
 
 - `superpowers:verification-before-completion` and `verify-against-reality` before anyone says done.

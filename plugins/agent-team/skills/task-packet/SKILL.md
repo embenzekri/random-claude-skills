@@ -10,7 +10,16 @@ nothing else. Put only what is specific to this task in it. Stable rules (testin
 git workflow, Definition of Done) live in AGENTS.md, not in tickets. Delegation brief shape and
 report contracts: the `fanout` skill. The lead's flow: the `team-lead` skill.
 
-Template (copy it): `/Volumes/MyData/ProjectsPro/random-claude-skills/plugins/agent-team/skills/task-packet/templates/task-packet.md`
+Template (copy it): `templates/task-packet.md`, relative to this skill's directory (the plugin copy is canonical; a copied skill dir carries its own `templates/`).
+
+## Step 0: already done or superseded? (before anything else)
+
+Before reading code or writing a packet, search history for the ticket and its key snippet:
+`git -C /ABS/REPO log --all --oneline --grep=<ID>` and `git -C /ABS/REPO log --all -S'<key snippet>' --oneline`.
+Also check the ticket is not already on main. If it shipped, the verdict is
+`obsolete: done in <sha>`: write NO packet (optionally a re-scoped residual packet for what is
+genuinely left) and hand back to the lead. Scar: TASK-3016 pilot, 18 Oct 2026 - a ticket in
+`todo/` had shipped a month earlier (542009111); one `git log -S` found it.
 
 ## Size
 
@@ -27,7 +36,7 @@ table only when it compresses.
 | `title` | Imperative, short |
 | `model` | Exact model. By cost of being wrong (`team-lead/references/routing.md`): top tier for architecture, contracts, migrations, auth/security, infra/SQL review, integration; sonnet for bounded implementation and tests; haiku for mechanical sweeps only |
 | `complexity` | `trivial` (one file, one obvious change, verified by one command) / `standard` / `complex` (prod data, schema, spend, cross-area, or a prior agent failed). `complex` needs a top-tier pre-read of the premise before dispatch |
-| `touches` | Everything this ticket WRITES or locks: paths and globs, DB tables, env vars, infra resources (`infra:cloud-scheduler`), contracts. Honest and wide. Two tickets sharing a touch never run at the same time |
+| `touches` | Everything this ticket WRITES or locks. Backlog tickets often use area notation (`area:name`); translate it to concrete paths/globs. Paths and globs, DB tables, env vars, infra resources (`infra:cloud-scheduler`), contracts. Honest and wide. Two tickets sharing a touch never run at the same time |
 | `blocked_by` | Tickets that must be done first (order, not simultaneity). Doing them out of order causes an outage, not a conflict |
 | `risk` | `high` for migration, auth, prod data, spend, public surface. High risk gets a top-tier reviewer |
 
@@ -48,9 +57,17 @@ table only when it compresses.
    `read-only` or `changes`. A ticket that needs a contract change is not ready: the lead
    fixes the contract first and re-issues the ticket. Cross-area contracts are never a worker's call.
 7. **Acceptance.** Numbers and exit codes only, each checkable by a command. See the ban list below.
+7a. **Toolchain bootstrap.** Install command (e.g. `npm ci`), runtime version, and whether
+   dependencies already exist in the fresh worktree (usually no `node_modules`). Never make the
+   agent discover these.
+7b. **Live-data claims.** Every claim about prod/live data is marked UNVERIFIED, with how
+   Acceptance avoids needing prod access (fixtures, read-only query the lead runs).
 8. **Verify commands.** Exact, copy-pasteable, absolute paths, with the expected output. Include
    one known-bad control where it matters (a request that must fail, a fixture that must go red)
-   and the mutation step: remove the change, the new test must fail.
+   and the mutation step: remove the change, the new test must fail. "Tests added" acceptance
+   may be "test count rises by >= N" with the baseline count command. Assert rendered text
+   exactly as the DOM shows it (`Marketplace:` with the colon), not the label constant. Give the
+   restore command for the mutation (`git checkout -- <file>`).
 9. **Rollout / rollback.** When it takes effect (merge, deploy of X, migration Y first) and the
    exact revert. "Merged is not running": if a deploy is needed, say "no effect in prod until X
    redeployed" and name the deploy ticket with a falsifiable prediction (5 marketintel tickets
@@ -97,8 +114,8 @@ Examples:
   "role": "implementer",
   "worktree": "/ABS/WT/T-123",
   "dod": {
-    "note": "docs/notes/T-123.md",
-    "verify_log": "docs/notes/T-123.verify.log",
+    "note": ".agent-team/T-123.note.md",
+    "verify_log": ".agent-team/T-123.verify.log",
     "changelog": "changelog.d/T-123.md"
   },
   "waived": null
@@ -107,7 +124,7 @@ Examples:
 
    - `role`: one of `implementer`, `tester`, `reviewer`, `integrator`, `release`.
    - `worktree`: absolute path of the worktree root. Hooks block Edit/Write outside it.
-   - `dod` paths are relative to the worktree. Use `null` for `changelog` if the repo has no
+   - `dod` paths are relative to the worktree and must be copied from `ticket.json` into the packet's Deliverable section, never invented (a packet saying `docs/notes/X.md` while the hook required `.agent-team/X.note.md` cost the TASK-3016 tester a conflict). Use `null` for `changelog` if the repo has no
      fragments. The Stop hook refuses to end the turn until every non-null path exists and is
      non-empty, `verify_log` has at least one line starting `VERIFIED:`, and none starting `FAILED:`.
    - Reviewers and testers still get a marker: point `note` at their report file.

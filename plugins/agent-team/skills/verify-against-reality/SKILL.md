@@ -47,6 +47,11 @@ The suite **must go red**. Paste the failing output. Restore, confirm green agai
 green, your coverage is decorative: write the assertion, do not report done.
 - Mutate the **production file**, never the fixture or a fake (TASK-159: 7/7 green under both
   mutations; the "failures" were in a fake that had drifted from the real mapper).
+- Prove the mutation applied before trusting a red: `git diff --stat -- <file>` must be
+  non-empty. macOS BSD `sed -i` needs `sed -i ''`; without it the edit silently no-ops and the
+  "red" is just an unfixed test. Prefer the Edit tool for mutations; restore with `git checkout -- <file>`.
+- Characterisation tests on already-shipped code: "red without change" means mutating the src
+  line (the test passes on main by design), not running on main.
 - Re-run the mutation on `main` first: a failure that was already there is not coverage you added.
 - A test that never imports the module under test cannot guard it. A test that matches source
   text is not a test of the code (TASK-150).

@@ -1,0 +1,34 @@
+{
+  "ticket": "T-000",
+  "branch": "agent/T-000",
+  "base_sha": "",
+  "head_sha": "",
+  "reviewer_model": "sonnet",
+  "verdict": "blocked",
+  "auto_merge_eligible": false,
+  "restricted_domains": [],
+  "scope": { "touches_ok": true, "out_of_scope_files": [] },
+  "findings": [
+    {
+      "severity": "major",
+      "file": "/ABS/WT/src/example.ts",
+      "line": 1,
+      "claim": "",
+      "evidence": "",
+      "confirmed": false,
+      "fix": "inline",
+      "source": "own"
+    }
+  ],
+  "reruns": [
+    {
+      "command": "cd /ABS/WT && <verify command from packet>",
+      "expected": "",
+      "result": "",
+      "matches_log": true
+    }
+  ],
+  "unverified": [],
+  "follow_ups": [],
+  "summary": ""
+}

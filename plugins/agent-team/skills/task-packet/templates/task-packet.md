@@ -3,7 +3,7 @@ id: T-000
 title: Short imperative phrase
 model: sonnet            # exact: haiku | sonnet | opus (top tier). Never inherit a default.
 complexity: standard     # trivial | standard | complex
-touches: [src/area/**]   # paths/globs, tables, env vars, infra resources this ticket writes
+touches: [src/area/**]   # CONCRETE paths/globs (translate area:name notation), tables, env vars, infra resources this ticket writes
 blocked_by: []           # ticket ids that must be done first
 risk: low                # low | medium | high (high = migration, auth, prod data, spend)
 ---
@@ -27,6 +27,12 @@ Verified <date/time>, by <who>. Each fact has a pointer or real output.
 ## Contracts touched
 - <contract file / shape / constant> : read-only | changes (changes go to the lead, not here)
 
+## Toolchain bootstrap
+- Install: <command, e.g. npm ci> | Runtime: <node version> | Deps present in worktree: <yes/no>
+
+## Live-data claims
+- <claim> : UNVERIFIED. Acceptance avoids prod access by <fixture | lead-run read-only query>. (none if none)
+
 ## Acceptance
 1. <number or exit status, machine-verifiable: "p95 <= 200 ms over 50 runs", "0 rows from <query>">
 
@@ -40,7 +46,7 @@ cd /ABS/WORKTREE && <exact command>      # expected: <exact expected output or e
 
 ## Deliverable + report contract
 - Marker: /ABS/WORKTREE/.agent-team/ticket.json (do not edit).
-- Note: <dod.note path>. Verify log: <dod.verify_log path> with lines `VERIFIED: <check> <measured value>`
+- Note: <dod.note path>. Verify log: <dod.verify_log path> (copy both verbatim from ticket.json; e.g. .agent-team/<ID>.note.md, .agent-team/<ID>.verify.log) with lines `VERIFIED: <check> <measured value>`
   and no line starting `FAILED:`. Changelog fragment: <path or none>.
 - Report (max 15 lines): files changed, each acceptance item with its measured number, anything
   you could not verify. Never paste file contents. Do not report success you did not measure.

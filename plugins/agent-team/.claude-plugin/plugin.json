@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "agent-team",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Run an agentic engineering team in Claude Code: a team lead that routes work by cost of being wrong, agent-ready task packets, proof-against-reality before done, and guard hooks for shared checkouts. Built from the marketintel and xmarlin fleets.",
   "author": { "name": "El Mehdi Benzekri", "url": "https://github.com/embenzekri" },
   "license": "MIT",

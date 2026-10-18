@@ -63,10 +63,11 @@ run the riskier flow and put the other as a blocked_by ticket.
 | integrator | rebase, run gates, merge one, re-run gates on main | git + CI | The only merger |
 | release | deploy, verify live, record | deploy CLIs | Merged is not running (section 6) |
 
-Roles as agent files (model pinned, tool allowlist) are tracked in the design doc
-`/Volumes/MyData/ProjectsPro/ai-business/opportunities/36-AGENTIC-TEAM-SKILLS.md` section 4.
-Until they exist, brief a `general-purpose` subagent with the role text and an explicit
-`model`. Never leave `model` at the default.
+Each role has an agent file in this plugin (model pinned, tool allowlist): dispatch
+`agent-team:<role>` (planner-architect, mapper, implementer, tester, reviewer, integrator,
+release) and pass `model` only to override per the routing table. If the agent types are not
+listed (the session started before the plugin loaded), brief a `general-purpose` subagent to
+follow `agents/<role>.md` with an explicit `model`. Never leave `model` at the default.
 
 ## 3. Model routing: by cost of being wrong
 
@@ -193,5 +194,5 @@ approved rules conflict; a failure repeats unexplained. Live prod incident: repa
 - `references/routing.md`: model table by cost of being wrong, per-role defaults, escalation,
   migration and SQL rules, concurrency numbers.
 - Sibling skills: `task-packet` (ticket), `verify-against-reality` (closing proof).
-  Planned in the design doc, not yet built: codebase-map, adr-contracts, review-lane, ship-loop,
-  retro-ledger. Do the step by hand with the rules above until they exist.
+  Built: `agent-team:codebase-map` (mapper method), `agent-team:review-lane` (reviewer checklist and verdict).
+  Planned in the design doc, not yet built: adr-contracts, ship-loop, retro-ledger. Do those steps by hand with the rules above until they exist.
