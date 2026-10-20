@@ -5,12 +5,14 @@ Bash rules (denied): git add -A/--all/./ ; git commit -a/-am/--all ; gh pr merge
 git push --force/-f/+refspec (--force-with-lease and --force-if-includes allowed).
 Commands are split on unquoted ; & | ( ) ` newline and tokenised with shlex, and only a
 `git`/`gh` at COMMAND position is inspected, so `echo "git add ."` and `git add .gitignore`
-are allowed. Known gap: `eval "$var"`, scripts and aliases are not inspected.
+are allowed. Heredoc bodies are stripped first (quoted: ignored; unquoted: only $(...) and
+backticks inspected). Known gap: `eval "$var"`, scripts and aliases are not inspected.
 File rule: if a .agent-team/ticket.json is found walking up from cwd, writes outside its
 "worktree" are denied (tmp dirs allowed). Set AGENT_TEAM_GUARD_OFF=1 to disable.
 """
 import json
 import os
+import re
 import shlex
 import sys
 
@@ -28,6 +30,85 @@ R_MERGE = ("`gh pr merge` is blocked for agents. Open or update the PR and repor
            "the integrator merges.")
 R_PUSH = ("Force push is blocked. Use git push --force-with-lease (or --force-if-includes) "
           "so you cannot overwrite commits you have not seen.")
+
+
+def subst_in_body(body):
+    """Command substitutions ($(...) and backticks) inside an UNQUOTED heredoc body."""
+    out, i, n = [], 0, len(body)
+    while i < n:
+        c = body[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "$" and body.startswith("$(", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                depth += (body[j] == "(") - (body[j] == ")")
+                j += 1
+            out.append(body[i + 2:j - 1 if depth == 0 else j])
+            i = j
+            continue
+        if c == "`":
+            j = body.find("`", i + 1)
+            if j < 0:
+                break
+            out.append(body[i + 1:j])
+            i = j + 1
+            continue
+        i += 1
+    return out
+
+
+def strip_heredocs(cmd):
+    """Return (cmd without heredoc bodies, substitutions found in unquoted bodies)."""
+    out, extra, pending = [], [], []
+    q = None
+    i, n = 0, len(cmd)
+    while i < n:
+        c = cmd[i]
+        if q:
+            out.append(c)
+            if c == "\\" and q == '"' and i + 1 < n:
+                out.append(cmd[i + 1])
+                i += 1
+            elif c == q:
+                q = None
+        elif c == "\\" and i + 1 < n:
+            out.append(cmd[i:i + 2])
+            i += 1
+        elif c in "'\"":
+            q = c
+            out.append(c)
+        elif c == "<" and cmd.startswith("<<", i) and not cmd.startswith("<<<", i):
+            m = re.match(r"<<(-?)[ \t]*(?:'([^'\n]*)'|\"([^\"\n]*)\"|([^\s;&|()<>'\"`]+))", cmd[i:])
+            if m:
+                quoted = m.group(2) is not None or m.group(3) is not None
+                delim = next(g for g in m.group(2, 3, 4) if g is not None)
+                pending.append((delim, m.group(1) == "-", quoted))
+                out.append(" ")
+                i += m.end()
+                continue
+            out.append(c)
+        elif c == "\n" and pending:
+            out.append("\n")
+            i += 1
+            for delim, strip, quoted in pending:
+                body = []
+                while i < n:
+                    e = cmd.find("\n", i)
+                    line = cmd[i:] if e < 0 else cmd[i:e]
+                    i = n if e < 0 else e + 1
+                    if (line.lstrip("\t") if strip else line) == delim:
+                        break
+                    body.append(line)
+                if not quoted:
+                    extra.extend(subst_in_body("\n".join(body)))
+            pending = []
+            continue
+        else:
+            out.append(c)
+        i += 1
+    return "".join(out), extra
 
 
 def split_segments(cmd):
@@ -152,7 +233,11 @@ def check_tokens(toks, depth):
 
 
 def check_command(cmd, depth=0):
-    for seg in split_segments(cmd):
+    cmd, extra = strip_heredocs(cmd)
+    segs = split_segments(cmd)
+    for e in extra:
+        segs.extend(split_segments(e))
+    for seg in segs:
         try:
             toks = shlex.split(seg)
         except ValueError:

@@ -85,6 +85,24 @@ class BashGuard(unittest.TestCase):
     def test_allow_plain_push(self): self.assertAllowed("git push -u origin feat")
     def test_allow_pr_view(self): self.assertAllowed("gh pr view 12 && gh pr create --fill")
     def test_allow_status(self): self.assertAllowed("git status && git diff")
+    def test_allow_quoted_heredoc_prose(self):
+        self.assertAllowed("cat >> notes.md <<'EOF'\nDo not run `git add -A` here.\ngit add .\nEOF")
+
+    def test_allow_dash_heredoc_double_quoted(self):
+        self.assertAllowed('cat <<-"EOF"\n\t`git add -A`\n\tEOF\ngit status')
+
+    def test_deny_after_heredoc_terminator(self):
+        self.assertDenied("cat >> n.md <<'EOF'\nprose `git add -A`\nEOF\ngit add -A")
+
+    def test_deny_unquoted_heredoc_substitution(self):
+        self.assertDenied("cat <<EOF\nrun $(git add -A) now\nEOF")
+
+    def test_deny_unquoted_heredoc_backtick(self):
+        self.assertDenied("cat <<EOF\nrun `git add -A` now\nEOF")
+
+    def test_allow_unquoted_heredoc_plain_prose(self):
+        self.assertAllowed("cat <<EOF\ngit add -A is blocked\nEOF")
+
     def test_allow_non_bash_tool(self):
         self.assertEqual(run(GUARD, {"tool_name": "Read", "tool_input": {"file_path": "/x"}}), (0, ""))
 
