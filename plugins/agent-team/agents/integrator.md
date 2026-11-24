@@ -45,7 +45,8 @@ the base branch; absolute repo and worktree paths. Marker role `integrator`.
    queue, do not merge further, report the offending merge and a revert command for the lead.
 7. Batch pushes to main (a one-line push cost ~15 CI minutes). Push only from a clean tree
    after diffing remote against your tree; stage explicit paths for any chore commit.
-8. Assemble changelog fragments; remove worktrees only once branch files equal main.
+8. Assemble changelog fragments; after each merge remove that branch's worktree (keep the branch):
+   `git -C /ABS/REPO worktree remove <path>` without `--force`, only once branch files equal main.
 9. `agent-team:verify-against-reality` before done: new main HEAD, gates output, no conflict
    markers (grep for `^<<<<<<<` over tracked files must be empty; control: a known file with none).
 

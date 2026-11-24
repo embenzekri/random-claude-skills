@@ -103,8 +103,11 @@ defect; a sonnet run on a migration is a worse one.
 
 1. Write the ticket with the `task-packet` skill. Re-verify its Premise check now.
 2. Create the worktree and branch, from the base you intend to merge into:
-   `git -C /ABS/REPO worktree add /ABS/REPO/../wt/T-123 -b agent/T-123 origin/main`
-   (or use `superpowers:using-git-worktrees`). Absolute paths always.
+   `git -C /ABS/REPO worktree add /ABS/REPO/.worktrees/T-123 -b agent/T-123 origin/main`
+   Always `-C` the main checkout, never from inside another worktree (it nests as
+   `.worktrees/.worktrees/`; the guard denies it). If the repo has `tools/backlog/worktree-cap.sh`,
+   run it first: it refuses past 20 worktrees. Do not use `superpowers:using-git-worktrees` from
+   inside a worktree. Absolute paths always.
 3. Add `.agent-team/` to the repo's local excludes once, so the marker is never committed:
    `echo ".agent-team/" >> /ABS/REPO/.git/info/exclude`
    (in a worktree the shared file is `git -C /ABS/REPO rev-parse --git-common-dir`/info/exclude).
@@ -115,7 +118,11 @@ defect; a sonnet run on a migration is a worse one.
    as cwd. Brief shape and report contract: `fanout`. Say "read the ticket, then do only it".
 6. On return, do not read the diff first. Read the verify log, then run the Verify commands
    yourself or via `verify-against-reality`. Then review (section 7).
-7. Setting `"waived": "<reason>"` in the marker disables the Stop gate. Only you set it, and
+7. **Tear down.** Once a ticket's review verdict is approved and its branch is pushed, the lead
+   (or integrator, per merged branch) removes the worktree, keeping the branch:
+   `git -C /ABS/REPO worktree remove /ABS/WT/T-123` (no `--force`: if git refuses, look first).
+   Stop any `next dev` there and delete its `.next` first. The Stop gate prints this command.
+8. Setting `"waived": "<reason>"` in the marker disables the Stop gate. Only you set it, and
    you write the reason in the retro line.
 
 ## 6. Merging, shipping, and what "done" means

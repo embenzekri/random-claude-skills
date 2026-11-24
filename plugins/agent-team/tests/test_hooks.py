@@ -227,5 +227,43 @@ class DodGate(unittest.TestCase):
         self.assertIn("block", run(GATE, {"cwd": self.td + "/a/b"})[1])
 
 
+
+class WorktreeGuard(unittest.TestCase):
+    def deny(self, cmd, cwd):
+        rc, out = bash(cmd, cwd)
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out)["hookSpecificOutput"]["permissionDecision"], "deny", cmd)
+
+    def test_nested_path_denied(self):
+        self.deny("git -C /r worktree add /r/.worktrees/.worktrees/x -b b origin/main", "/tmp")
+
+    def test_add_from_inside_worktree_without_C_denied(self):
+        self.deny("git worktree add .worktrees/x -b b", "/r/.worktrees/T-1")
+
+    def test_add_from_main_allowed(self):
+        self.assertEqual(bash("git -C /r worktree add /r/.worktrees/x -b b origin/main", "/r/.worktrees/T-1"), (0, ""))
+
+    def test_cap_refusal_denied(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "tools", "backlog"))
+            sc = os.path.join(d, "tools", "backlog", "worktree-cap.sh")
+            write(sc, "#!/bin/sh\necho at cap >&2\nexit 1\n")
+            os.chmod(sc, 0o755)
+            self.deny("git -C %s worktree add %s/.worktrees/x -b b" % (d, d), "/tmp")
+
+    def test_list_and_remove_allowed(self):
+        self.assertEqual(bash("git worktree list", "/r/.worktrees/T-1"), (0, ""))
+        self.assertEqual(bash("git -C /r worktree remove /r/.worktrees/x", "/tmp"), (0, ""))
+
+
+class DodGateWorktreeNote(unittest.TestCase):
+    def test_note_never_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wt = make_ticket(tmp)
+            write(os.path.join(wt, "note.md"), "n")
+            write(os.path.join(wt, "verify.log"), "VERIFIED: x\n")
+            rc, out = run(GATE, {"cwd": wt})
+            self.assertEqual((rc, out), (0, ""))
+
 if __name__ == "__main__":
     unittest.main()

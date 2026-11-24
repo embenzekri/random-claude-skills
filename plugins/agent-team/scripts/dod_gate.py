@@ -29,6 +29,23 @@ def nonempty(path):
         return False
 
 
+def worktree_note(wt):
+    """Advice only (stderr), never blocks: unpushed commits -> warn; else print the removal command."""
+    import subprocess
+
+    def g(*a):
+        return subprocess.run(["git", "-C", wt, *a], capture_output=True, text=True, timeout=20)
+    common = g("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
+    if not common.endswith("/.git") or "/.worktrees/" not in wt + "/":
+        return None
+    main = common[:-5]
+    ahead = g("rev-list", "--count", "@{u}..HEAD")
+    if ahead.returncode != 0 or ahead.stdout.strip() != "0":
+        return ("agent-team: worktree %s has unpushed commits (or no upstream): push the branch before it is removed." % wt)
+    return ("agent-team: branch is pushed. Once its PR is merged/closed the lead removes this worktree "
+            "(keep the branch): git -C %s worktree remove %s" % (main, wt))
+
+
 def main():
     data = json.loads(sys.stdin.read())
     if not isinstance(data, dict) or data.get("stop_hook_active"):
@@ -65,6 +82,10 @@ def main():
         failed = [ln for ln in lines if ln.startswith("FAILED:")]
         if failed:
             missing.append("%s has %d unresolved 'FAILED:' line(s), e.g. %s" % (vl, len(failed), failed[0][:120]))
+    if not missing:
+        note = worktree_note(wt)
+        if note:
+            sys.stderr.write(note + "\n")
     if missing:
         reason = ("Ticket %s is not done. Fix before stopping: " % t.get("id", "?")
                   + "; ".join(missing)
