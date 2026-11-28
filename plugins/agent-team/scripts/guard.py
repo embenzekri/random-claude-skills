@@ -7,6 +7,10 @@ Commands are split on unquoted ; & | ( ) ` newline and tokenised with shlex, and
 `git`/`gh` at COMMAND position is inspected, so `echo "git add ."` and `git add .gitignore`
 are allowed. Heredoc bodies are stripped first (quoted: ignored; unquoted: only $(...) and
 backticks inspected). Known gap: `eval "$var"`, scripts and aliases are not inspected.
+Worktree rule: `git worktree add` is denied when its path contains /.worktrees/.worktrees/, when
+cwd is inside a /.worktrees/ checkout and no `-C <main>` is given (that nests), or when the repo's
+tools/backlog/worktree-cap.sh (if present) refuses (cap reached, only in WORKTREE_CAP_MODE=enforce;
+the script's default warn mode lets the add through and the warning is shown to the agent). Fails open if the script is absent.
 File rule: if a .agent-team/ticket.json is found walking up from cwd, writes outside its
 "worktree" are denied (tmp dirs allowed). Set AGENT_TEAM_GUARD_OFF=1 to disable.
 """
@@ -28,6 +32,9 @@ R_COMMIT = ("`git commit -a/-am` is blocked (it commits every tracked change, in
             "Stage explicit paths with git add <paths>, then run git commit -m '...'.")
 R_MERGE = ("`gh pr merge` is blocked for agents. Open or update the PR and report it; "
            "the integrator merges.")
+R_NEST = ("Nested worktree blocked: run it from the main checkout as `git -C /ABS/MAIN worktree add "
+          "/ABS/MAIN/.worktrees/<name> -b <branch> origin/main` (a worktree created from inside another "
+          "worktree lands in .worktrees/.worktrees/ and is never cleaned up).")
 R_PUSH = ("Force push is blocked. Use git push --force-with-lease (or --force-if-includes) "
           "so you cannot overwrite commits you have not seen.")
 
@@ -140,10 +147,46 @@ def split_segments(cmd):
     return [s for s in segs if s.strip()]
 
 
+CWD = os.getcwd()
+WARN = []
+
+
+def check_worktree_add(dash_c, rest):
+    pos, k = [], 0
+    while k < len(rest):
+        a = rest[k]
+        if a in ("-b", "-B", "--reason"):
+            k += 2
+            continue
+        if not a.startswith("-"):
+            pos.append(a)
+        k += 1
+    target = pos[0] if pos else ""
+    base = os.path.realpath(dash_c) if dash_c else os.path.realpath(CWD)
+    full = target if os.path.isabs(target) else os.path.join(base, target)
+    if "/.worktrees/.worktrees/" in os.path.normpath(full) + "/" or (
+            not dash_c and "/.worktrees/" in os.path.realpath(CWD) + "/"):
+        return R_NEST
+    script = os.path.join(base, "tools", "backlog", "worktree-cap.sh")
+    if not os.path.isfile(script):
+        return None
+    import subprocess
+    r = subprocess.run([script, "--path", os.path.normpath(full)] if target else [script],
+                       cwd=base, capture_output=True, text=True, timeout=60)
+    if r.returncode in (1, 2):
+        return "Worktree cap/nesting guard refused: " + r.stderr.strip()
+    if r.returncode == 0 and r.stderr.strip():
+        WARN.append(r.stderr.strip())  # warn mode: surface, do not block
+    return None
+
+
 def check_git(args):
     i = 0
+    dash_c = None
     while i < len(args):
         a = args[i]
+        if a == "-C" and i + 1 < len(args):
+            dash_c = args[i + 1]
         if a in GIT_OPT_WITH_VALUE:
             i += 2
             continue
@@ -154,6 +197,8 @@ def check_git(args):
     if i >= len(args):
         return None
     sub, rest = args[i], args[i + 1:]
+    if sub == "worktree" and rest[:1] == ["add"]:
+        return check_worktree_add(dash_c, rest[1:])
     if sub == "add":
         for a in rest:
             if a in (".", "./", "--all"):
@@ -298,6 +343,8 @@ def main():
     if not isinstance(inp, dict):
         return
     cwd = data.get("cwd") if isinstance(data.get("cwd"), str) and data.get("cwd") else os.getcwd()
+    global CWD
+    CWD = cwd
     reason = None
     if tool == "Bash" and isinstance(inp.get("command"), str):
         reason = check_command(inp["command"])
@@ -308,6 +355,10 @@ def main():
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": reason}}))
+    elif WARN:
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": WARN[0]}}))
 
 
 if __name__ == "__main__":
