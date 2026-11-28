@@ -106,7 +106,8 @@ defect; a sonnet run on a migration is a worse one.
    `git -C /ABS/REPO worktree add /ABS/REPO/.worktrees/T-123 -b agent/T-123 origin/main`
    Always `-C` the main checkout, never from inside another worktree (it nests as
    `.worktrees/.worktrees/`; the guard denies it). If the repo has `tools/backlog/worktree-cap.sh`,
-   run it first: it refuses past 20 worktrees. Do not use `superpowers:using-git-worktrees` from
+   run it first: it warns past 20 worktrees (default `WORKTREE_CAP_MODE=warn`; set
+   `WORKTREE_CAP_MODE=enforce` to refuse once the count is under 20) and always refuses a nested path. Do not use `superpowers:using-git-worktrees` from
    inside a worktree. Absolute paths always.
 3. Add `.agent-team/` to the repo's local excludes once, so the marker is never committed:
    `echo ".agent-team/" >> /ABS/REPO/.git/info/exclude`

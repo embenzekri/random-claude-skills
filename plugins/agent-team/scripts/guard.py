@@ -9,7 +9,8 @@ are allowed. Heredoc bodies are stripped first (quoted: ignored; unquoted: only 
 backticks inspected). Known gap: `eval "$var"`, scripts and aliases are not inspected.
 Worktree rule: `git worktree add` is denied when its path contains /.worktrees/.worktrees/, when
 cwd is inside a /.worktrees/ checkout and no `-C <main>` is given (that nests), or when the repo's
-tools/backlog/worktree-cap.sh (if present) refuses (cap reached). Fails open if the script is absent.
+tools/backlog/worktree-cap.sh (if present) refuses (cap reached, only in WORKTREE_CAP_MODE=enforce;
+the script's default warn mode lets the add through and the warning is shown to the agent). Fails open if the script is absent.
 File rule: if a .agent-team/ticket.json is found walking up from cwd, writes outside its
 "worktree" are denied (tmp dirs allowed). Set AGENT_TEAM_GUARD_OFF=1 to disable.
 """
@@ -147,6 +148,7 @@ def split_segments(cmd):
 
 
 CWD = os.getcwd()
+WARN = []
 
 
 def check_worktree_add(dash_c, rest):
@@ -173,6 +175,8 @@ def check_worktree_add(dash_c, rest):
                        cwd=base, capture_output=True, text=True, timeout=60)
     if r.returncode in (1, 2):
         return "Worktree cap/nesting guard refused: " + r.stderr.strip()
+    if r.returncode == 0 and r.stderr.strip():
+        WARN.append(r.stderr.strip())  # warn mode: surface, do not block
     return None
 
 
@@ -351,6 +355,10 @@ def main():
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": reason}}))
+    elif WARN:
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": WARN[0]}}))
 
 
 if __name__ == "__main__":

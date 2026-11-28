@@ -251,6 +251,21 @@ class WorktreeGuard(unittest.TestCase):
             os.chmod(sc, 0o755)
             self.deny("git -C %s worktree add %s/.worktrees/x -b b" % (d, d), "/tmp")
 
+    def test_cap_warning_is_surfaced_not_blocked(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "tools", "backlog"))
+            sc = os.path.join(d, "tools", "backlog", "worktree-cap.sh")
+            write(sc, "#!/bin/sh\necho 'WARNING 266 worktrees' >&2\nexit 0\n")
+            os.chmod(sc, 0o755)
+            rc, out = bash("git -C %s worktree add %s/.worktrees/x -b b" % (d, d))
+            self.assertEqual(rc, 0)
+            h = json.loads(out)["hookSpecificOutput"]
+            self.assertNotIn("permissionDecision", h)
+            self.assertIn("WARNING 266", h["additionalContext"])
+
+    def test_nesting_denied_even_when_cap_script_warns(self):
+        self.deny("git -C /r worktree add /r/.worktrees/.worktrees/x -b b", "/tmp")
+
     def test_list_and_remove_allowed(self):
         self.assertEqual(bash("git worktree list", "/r/.worktrees/T-1"), (0, ""))
         self.assertEqual(bash("git -C /r worktree remove /r/.worktrees/x", "/tmp"), (0, ""))
